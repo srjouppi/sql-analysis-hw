@@ -1,0 +1,120 @@
+1. TOP 15 COUNTRIES FOR SOLAR ENERGY USAGE 2014
+SELECT country, usage 
+FROM solar 
+WHERE year = '2014' 
+ORDER BY usage DESC LIMIT 15;
+      country       | usage 
+--------------------+-------
+ Germany            | 36056
+ United States      | 25764
+ Japan              | 22952
+ Italy              | 22306
+ China              | 15189
+ Spain              | 13673
+ France             |  6392
+ India              |  5020
+ United Kingdom     |  4054
+ Australia          |  4010
+ Greece             |  3792
+ Belgium            |  2886
+ Korea, Republic of |  2557
+ Czechia            |  2123
+ Canada             |  2120
+(15 rows)
+
+2. AVG Solar energy usage countries above 500
+SELECT round(avg(usage)), country FROM solar GROUP BY country HAVING avg(usage) > 500 ORDER BY avg(usage) DESC;
+
+3. Countries first collection 2012
+SELECT min(year), country
+FROM solar
+GROUP BY country HAVING min(year) = 2012
+ORDER BY country ASC;
+
+4. Four columns - wind and solar usage for germany each year
+SELECT solar.country, solar.year, wind.usage, solar.usage
+FROM solar
+JOIN wind ON solar.year = wind.year
+WHERE solar.country = 'Germany' AND wind.country = 'Germany'
+ORDER BY year ASC;
+
+**IN CLASS**
+SELECT solar.country, solar. year, wind.usage, solar.usage
+FROM wind
+JOIN solar ON solar.year = wind.year AND wind.country = solar.country
+WHERE solar.country = 'Germany'
+ORDER BY wind.year;
+
+5. Avg Wind and solar usage for each country, order by average solar show top 10
+SELECT wind.country, avg(wind.usage), avg(solar.usage)
+FROM wind
+JOIN solar ON wind.country = solar.country
+GROUP BY wind.country
+ORDER BY avg(solar.usage) DESC LIMIT 10;
+
+6. Average wind and solar usage for each country from 2010, ORDER BY average solar usage and only show top 10
+SELECT wind.country, avg(wind.usage), avg(solar.usage)
+FROM wind
+JOIN solar ON wind.country = solar.country
+WHERE solar.year >= 2010 AND wind.year >= 2010
+GROUP BY wind.country
+ORDER BY avg(solar.usage) DESC LIMIT 10;
+
+7. First year of data and most recent year for each country from solar. Limit to first 15 with the oldest year and then in alphabetical order.
+SELECT country, min(year), max(year) 
+FROM solar
+GROUP BY country
+ORDER BY min(year), country ASC LIMIT 15;
+
+8. Subquery, join solar table twice, first to get usage from earliest date next to get usage from most recent date. Order it by the most usage from the most recent year.
+WITH solar1 AS (SELECT country, min(year) AS first_year, max(year) AS last_year FROM solar GROUP BY country ORDER BY min(year), country ASC LIMIT 15)
+SELECT solar1.country, solar1.first_year, solar1.last_year, solar.usage
+FROM solar
+JOIN solar1 ON solar.year = solar1.first_year AND solar.country = solar1.country
+ORDER BY solar1.first_year, solar1.country ASC;
+
+
+WITH solar1 AS (
+    SELECT country, min(year) AS first_year, max(year) AS last_year 
+    FROM solar 
+    GROUP BY country 
+    ORDER BY min(year), country ASC LIMIT 15),
+    solar2 AS (
+    SELECT solar1.country, solar1.first_year, solar1.last_year, solar.usage AS first_usage
+    FROM solar
+    JOIN solar1 ON solar.year = solar1.first_year AND solar.country = solar1.country
+    ORDER BY solar1.first_year, solar1.country ASC)
+SELECT solar2.country, solar1.first_year, solar1.last_year, solar2.first_usage, solar.usage AS last_usage
+FROM solar
+JOIN solar1 ON solar.year = solar1.last_year AND solar.country = solar1.country
+JOIN solar2 ON solar.country = solar2.country
+ORDER BY last_usage DESC;
+
+WITH solar1 AS (
+    SELECT country, min(year) AS first_year, max(year) AS last_year 
+    FROM solar 
+    GROUP BY country 
+    ORDER BY min(year), country ASC LIMIT 15),
+    solar2 AS (
+    SELECT solar1.country, solar1.first_year, solar1.last_year, solar.usage AS first_usage
+    FROM solar
+    JOIN solar1 ON solar.year = solar1.first_year AND solar.country = solar1.country)
+SELECT solar2.country, solar1.first_year, solar1.last_year, solar2.first_usage, solar.usage AS last_usage
+FROM solar
+JOIN solar1 ON solar.year = solar1.last_year AND solar.country = solar1.country
+JOIN solar2 ON solar.country = solar2.country
+ORDER BY last_usage DESC;
+
+9. Average other on average solar and wind
+WITH energy1 AS (SELECT wind.country, avg(wind.usage) AS avg_wind, avg(solar.usage) AS avg_solar
+FROM wind
+JOIN solar ON wind.country = solar.country
+GROUP BY wind.country)
+SELECT energy1.country, avg(thermal.usage) AS avg_thermal, energy1.avg_wind, energy1.avg_solar
+FROM energy1
+JOIN thermal
+ON energy1.country = thermal.country
+GROUP BY energy1.country, energy1.avg_wind, energy1.avg_solar
+ORDER BY avg(thermal.usage) DESC LIMIT 10;
+
+# Hi, Jon! I don't understand why it wanted me to include 'avg_wind' and 'avg_solar' in the group by statement. I was getting an error message that said, 'column "energy1.avg_wind" must appear in the GROUP BY clause or be used in an aggregate function'
